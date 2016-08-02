@@ -31,7 +31,7 @@ class Form(QDialog):
         grid = QGridLayout()
         grid.addWidget(dateLabel, 0, 0)
         grid.addWidget(self.fromComboBox, 1, 0)
-        grid.addWidget(self.fromSpinbox, 1, 1)
+        grid.addWidget(self.fromSpinBox, 1, 1)
         grid.addWidget(self.toComboBox, 2, 0)
         grid.addWidget(self.toLabel, 2, 1)
         self.setLayout(grid)
@@ -51,9 +51,39 @@ class Form(QDialog):
         amount = (self.rates[from_] / self.rates[to]) * self.fromSpinBox.value()
         self.toLabel.setText('%0.2f' % amount)
 
+    def update_rates(self):
+        fh = request.urlopen('http://www.bankofcanada.ca/en/markets/csv/exchange_eng.csv')
+        with open('rates.csv', 'wb') as f:
+            f.write(fh)
+
     def getdata(self):
-        raise NotImplementedError('-- TODO --')
-        # self.rates = []
-        # try:
-        #     date = 'Unknown'
-        #     fh = request.urlopen('http://www.bankofcanada.ca/en/markets/csv/exchange_eng.csv')
+        self.rates = {}
+        try:
+            date = 'Unknown'
+            # Uncomment the next line to get the most recent rates from online
+            # self.update_rates()
+            with open('rates.csv', 'r') as fh:
+                for line in fh:
+                    if not line or line.startswith(('#', 'Closing ')):
+                        continue
+                    fields = line.split(', ')
+                    if line.startswith('Date '):
+                        date = fields[-1]
+                    else:
+                        try:
+                            value = float(fields[-1])
+                            self.rates[str(fields[0])] = value
+                        except ValueError:
+                            pass
+            return 'Exchange Rates Date: ' + date
+        except Exception as e:
+            return 'Failed to download:\n%s' % e
+
+
+
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    form = Form()
+    form.show()
+    app.exec_()
